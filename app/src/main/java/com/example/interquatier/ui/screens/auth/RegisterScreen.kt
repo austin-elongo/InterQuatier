@@ -41,8 +41,12 @@ fun RegisterScreen(
                 }
             }
             is AuthState.Error -> {
-                errorMessage = (authState as AuthState.Error).message
                 showError = true
+                errorMessage = (authState as AuthState.Error).message
+                authViewModel.resetState()
+            }
+            is AuthState.Loading -> {
+                showError = false
             }
             else -> {}
         }

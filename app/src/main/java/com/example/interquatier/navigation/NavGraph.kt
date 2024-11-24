@@ -1,33 +1,33 @@
 package com.example.interquatier.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
 import com.example.interquatier.ui.screens.auth.LoginScreen
 import com.example.interquatier.ui.screens.auth.RegisterScreen
 import com.example.interquatier.ui.screens.home.HomeScreen
+import com.example.interquatier.viewmodel.AuthViewModel
 
 @Composable
-fun AppNavigation() {
-    val navController = rememberNavController()
-
-    NavHost(navController = navController, startDestination = Screen.Login.route) {
+fun NavGraph(
+    navController: NavHostController,
+    authViewModel: AuthViewModel
+) {
+    NavHost(
+        navController = navController,
+        startDestination = if (authViewModel.isLoggedIn()) Screen.Home.route else Screen.Login.route
+    ) {
         composable(Screen.Login.route) {
-            LoginScreen(navController)
+            LoginScreen(navController, authViewModel)
         }
+        
         composable(Screen.Register.route) {
-            RegisterScreen(navController)
+            RegisterScreen(navController, authViewModel)
         }
+        
         composable(Screen.Home.route) {
-            HomeScreen(navController)
+            HomeScreen(navController, authViewModel)
         }
     }
-}
-
-sealed class Screen(val route: String) {
-    object Login : Screen("login")
-    object Register : Screen("register")
-    object Home : Screen("home")
-    // Add more screens as needed
 } 
