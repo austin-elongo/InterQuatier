@@ -10,6 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
@@ -21,6 +22,8 @@ import java.text.SimpleDateFormat
 import java.util.*
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
+import com.example.interquatier.util.ImageCache
+import com.example.interquatier.ui.components.EventBanner
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,85 +31,47 @@ fun EventScreen(
     navController: NavController,
     eventViewModel: EventViewModel = viewModel()
 ) {
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-    val scope = rememberCoroutineScope()
-    val eventState by eventViewModel.eventState.collectAsState()
-
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        drawerContent = {
-            ModalDrawerSheet {
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    "InterQuatier",
-                    modifier = Modifier.padding(16.dp),
-                    style = MaterialTheme.typography.headlineMedium
-                )
-                Divider()
-                NavigationDrawerItem(
-                    label = { Text("Create Event") },
-                    selected = false,
-                    onClick = {
-                        scope.launch {
-                            drawerState.close()
-                            navController.navigate(Screen.CreateEvent.route)
-                        }
-                    },
-                    icon = { Icon(Icons.Default.Add, contentDescription = null) }
-                )
-                // Add more drawer items here
-            }
+    val events by eventViewModel.events.collectAsState()
+    val context = LocalContext.current
+    
+    // Preload all event images
+    LaunchedEffect(events) {
+        val imageUrls = events.mapNotNull { event -> 
+            event.bannerImageUrl.takeIf { it.isNotBlank() }
         }
-    ) {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { Text("Events") },
-                    navigationIcon = {
-                        IconButton(onClick = {
-                            scope.launch { drawerState.open() }
-                        }) {
-                            Icon(Icons.Default.Menu, contentDescription = "Menu")
-                        }
+        ImageCache.preloadImages(context, imageUrls)
+    }
+
+    Scaffold(
+        // Add the FAB here
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { navController.navigate(Screen.CreateEvent.route) }
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Create Event")
+            }
+        },
+        floatingActionButtonPosition = FabPosition.End
+    ) { padding ->
+        val eventsList = events.toList()
+
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            items(
+                items = eventsList,
+                key = { event -> event.id }
+            ) { event ->
+                EventBanner(
+                    event = event,
+                    onClick = { 
+                        navController.navigate(Screen.EventDetails.createRoute(event.id))
                     }
                 )
-            }
-        ) { padding ->
-            when (val state = eventState) {
-                is EventState.Loading -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
-                }
-                is EventState.Success -> {
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(padding)
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        items(state.events) { event ->
-                            EventCard(
-                                event = event,
-                                onEventClick = { 
-                                    navController.navigate(Screen.EventDetails.createRoute(event.id))
-                                }
-                            )
-                        }
-                    }
-                }
-                is EventState.Error -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(state.message)
-                    }
-                }
             }
         }
     }
