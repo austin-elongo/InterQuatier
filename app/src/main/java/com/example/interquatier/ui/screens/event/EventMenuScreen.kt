@@ -30,8 +30,19 @@ fun EventMenuScreen(
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = { navController.navigate(Screen.CreateEvent.route) },
-                icon = { Icon(Icons.Default.Add, "Create Event") },
-                text = { Text("Create Event") },
+                icon = { 
+                    Icon(
+                        Icons.Default.Add, 
+                        "Create Event",
+                        tint = MaterialTheme.colorScheme.onPrimary
+                    ) 
+                },
+                text = { 
+                    Text(
+                        "Create Event",
+                        color = MaterialTheme.colorScheme.onPrimary
+                    ) 
+                },
                 containerColor = MaterialTheme.colorScheme.primary
             )
         },
@@ -57,7 +68,6 @@ fun EventMenuScreen(
                 }
             }
 
-            // Quick Actions at the bottom
             QuickActions(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -89,7 +99,8 @@ private fun EventCategoryCard(
             Icon(
                 imageVector = category.icon,
                 contentDescription = null,
-                modifier = Modifier.size(48.dp)
+                modifier = Modifier.size(48.dp),
+                tint = MaterialTheme.colorScheme.primary  // Using primary color (orange) for icons
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
@@ -151,7 +162,11 @@ private fun QuickActionButton(
         Column(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Icon(icon, contentDescription = label)
+            Icon(
+                icon, 
+                contentDescription = label,
+                tint = MaterialTheme.colorScheme.primary  // Using primary color (orange) for icons
+            )
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelSmall
