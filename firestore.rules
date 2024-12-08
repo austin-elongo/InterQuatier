@@ -1,0 +1,60 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // This rule allows anyone with your Firestore database reference to view, edit,
+    // and delete all data in your Firestore database. It is useful for getting
+    // started, but it is configured to expire after 30 days because it
+    // leaves your app open to attackers. At that time, all client
+    // requests to your Firestore database will be denied.
+    //
+    // Make sure to write security rules for your app before that time, or else
+    // all client requests to your Firestore database will be denied until you Update
+    // your rules
+    match /{document=**} {
+      allow read, write: if request.time < timestamp.date(2024, 12, 29);
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    function isEventCreator(eventData) {
+      return request.auth.uid == eventData.creatorId;
+    }
+    
+    function isValidEvent() {
+      let event = request.resource.data;
+      return event.size() > 0 &&
+             event.title is string && event.title.size() > 0 &&
+             event.sport is string && event.sport.size() > 0 &&
+             event.location is string && event.location.size() > 0 &&
+             event.dateTime is timestamp &&
+             event.participantLimit is number && event.participantLimit > 0;
+    }
+    
+    // Events collection
+    match /events/{eventId} {
+      allow read: if true;  // Anyone can read events
+      allow create: if isSignedIn() && isValidEvent();
+      allow update: if isSignedIn() && (
+        isEventCreator(resource.data) ||  // Event creator can update
+        // Participants can join/leave
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['currentParticipants']))
+      );
+      allow delete: if isSignedIn() && isEventCreator(resource.data);
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      allow read: if true;
+      allow write: if isSignedIn() && isOwner(userId);
+    }
+  }
+}
