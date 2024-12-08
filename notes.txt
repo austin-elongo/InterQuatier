@@ -1,0 +1,5 @@
+#read through the file 
+follow the guide as much as possible
+
+flutter documentation
+https://docs.flutter.dev/
