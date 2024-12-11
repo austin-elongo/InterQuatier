@@ -7,30 +7,16 @@ typedef ProgressCallback = void Function(double progress);
 class StorageService {
   final _storage = FirebaseStorage.instance;
 
-  Future<String> uploadEventImage(
-    String eventId,
-    File imageFile, {
-    ProgressCallback? onProgress,
-  }) async {
-    final ext = path.extension(imageFile.path);
-    final ref = _storage.ref().child('events/$eventId$ext');
-    
-    final uploadTask = ref.putFile(
-      imageFile,
-      SettableMetadata(contentType: 'image/$ext'),
-    );
-
-    uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
-      final progress = snapshot.bytesTransferred / snapshot.totalBytes;
-      onProgress?.call(progress);
-    });
-
-    final snapshot = await uploadTask;
-    return await snapshot.ref.getDownloadURL();
+  Future<double> _calculateTotalBytes(List<File> files) async {
+    double total = 0;
+    for (var file in files) {
+      total += await file.length();
+    }
+    return total;
   }
 
-  Future<List<String>> uploadEventImages(
-    String eventId,
+  Future<List<String>> uploadRentalImages(
+    String itemId,
     List<File> imageFiles, {
     ProgressCallback? onProgress,
   }) async {
@@ -41,7 +27,7 @@ class StorageService {
     for (var i = 0; i < imageFiles.length; i++) {
       final file = imageFiles[i];
       final ext = path.extension(file.path);
-      final ref = _storage.ref().child('events/$eventId/image_$i$ext');
+      final ref = _storage.ref().child('rentals/$itemId/image_$i$ext');
       
       final uploadTask = ref.putFile(
         file,
@@ -63,22 +49,25 @@ class StorageService {
     return urls;
   }
 
-  Future<int> _calculateTotalBytes(List<File> files) async {
-    var total = 0;
-    for (final file in files) {
-      total += await file.length();
-    }
-    return total;
-  }
+  Future<String> uploadEventImage(
+    String eventId,
+    File imageFile, {
+    ProgressCallback? onProgress,
+  }) async {
+    final ext = path.extension(imageFile.path);
+    final ref = _storage.ref().child('events/$eventId$ext');
+    
+    final uploadTask = ref.putFile(
+      imageFile,
+      SettableMetadata(contentType: 'image/$ext'),
+    );
 
-  Future<void> deleteEventImages(List<String> imageUrls) async {
-    for (final url in imageUrls) {
-      try {
-        final ref = _storage.refFromURL(url);
-        await ref.delete();
-      } catch (e) {
-        // Handle or ignore error if image doesn't exist
-      }
-    }
+    uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
+      final progress = snapshot.bytesTransferred / snapshot.totalBytes;
+      onProgress?.call(progress);
+    });
+
+    final snapshot = await uploadTask;
+    return await snapshot.ref.getDownloadURL();
   }
 } 

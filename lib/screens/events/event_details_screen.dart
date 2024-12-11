@@ -6,6 +6,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:interquatier/screens/events/participant_list_screen.dart';
 import 'package:interquatier/providers/auth_provider.dart';
 import 'package:interquatier/providers/event_provider.dart';
+import 'package:interquatier/widgets/rating/rating_display.dart';
+import 'package:interquatier/widgets/rating/review_list.dart';
+import 'package:interquatier/screens/reviews/reviews_screen.dart';
+import 'package:interquatier/widgets/reviews/audio_review_recorder.dart';
+import 'package:interquatier/providers/review_provider.dart';
 
 class EventDetailsScreen extends ConsumerWidget {
   final Event event;
@@ -89,10 +94,91 @@ class EventDetailsScreen extends ConsumerWidget {
 
                   // Join Button
                   _buildJoinButton(context, ref),
+
+                  if (event.startTime.isBefore(DateTime.now())) ...[
+                    const Divider(),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Reviews',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ReviewsScreen(
+                                targetId: event.id,
+                                targetType: 'event',
+                                title: event.title,
+                              ),
+                            ),
+                          ),
+                          child: const Text('See All'),
+                        ),
+                      ],
+                    ),
+                    RatingDisplay(
+                      targetId: event.id,
+                      targetType: 'event',
+                    ),
+                    const SizedBox(height: 16),
+                    ReviewList(
+                      targetId: event.id,
+                      targetType: 'event',
+                      showHeader: false,
+                    ),
+                    if (event.endTime.add(const Duration(minutes: 30)).isBefore(DateTime.now())) ...[
+                      AudioReviewRecorder(
+                        eventId: event.id,
+                        reviewCount: ref.watch(audioReviewCountProvider(event.id)).value ?? 0,
+                        onAudioUploaded: (audioUrl) {
+                          ref.read(reviewProvider(event.id).notifier).addAudioReview(audioUrl);
+                        },
+                      ),
+                    ],
+                  ],
                 ],
               ),
             ),
           ),
+
+          // Add this section before the participant list
+          if (event.equipmentProvided.isEmpty) ...[
+            const SizedBox(height: 16),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Need Equipment?',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Browse available equipment for rent in your area',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 16),
+                    FilledButton.icon(
+                      onPressed: () {
+                        Navigator.pushNamed(
+                          context,
+                          '/rentals/${event.sport.toLowerCase()}',
+                        );
+                      },
+                      icon: const Icon(Icons.shopping_bag),
+                      label: const Text('Browse Equipment'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -141,7 +227,7 @@ class EventDetailsScreen extends ConsumerWidget {
             context,
             Icons.calendar_today,
             'Date',
-            DateFormat('MMM dd, yyyy').format(event.dateTime),
+            DateFormat('MMM dd, yyyy').format(event.startTime),
           ),
         ),
         const SizedBox(width: 16),
@@ -150,7 +236,7 @@ class EventDetailsScreen extends ConsumerWidget {
             context,
             Icons.access_time,
             'Time',
-            DateFormat('HH:mm').format(event.dateTime),
+            DateFormat('HH:mm').format(event.startTime),
           ),
         ),
         const SizedBox(width: 16),
