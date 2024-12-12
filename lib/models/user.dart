@@ -8,6 +8,7 @@ class UserProfile {
   final String? bio;
   final List<String> interests;
   final List<String> joinedEvents;
+  final List<String> pastEvents;
   final DateTime createdAt;
   final DateTime lastActive;
 
@@ -19,6 +20,7 @@ class UserProfile {
     this.bio,
     this.interests = const [],
     this.joinedEvents = const [],
+    this.pastEvents = const [],
     required this.createdAt,
     required this.lastActive,
   });
@@ -33,6 +35,7 @@ class UserProfile {
       bio: data['bio'],
       interests: List<String>.from(data['interests'] ?? []),
       joinedEvents: List<String>.from(data['joinedEvents'] ?? []),
+      pastEvents: List<String>.from(data['pastEvents'] ?? []),
       createdAt: (data['createdAt'] as Timestamp).toDate(),
       lastActive: (data['lastActive'] as Timestamp).toDate(),
     );
@@ -46,6 +49,7 @@ class UserProfile {
       'bio': bio,
       'interests': interests,
       'joinedEvents': joinedEvents,
+      'pastEvents': pastEvents,
       'createdAt': Timestamp.fromDate(createdAt),
       'lastActive': Timestamp.fromDate(lastActive),
     };
@@ -57,6 +61,7 @@ class UserProfile {
     String? bio,
     List<String>? interests,
     List<String>? joinedEvents,
+    List<String>? pastEvents,
     DateTime? lastActive,
   }) {
     return UserProfile(
@@ -67,6 +72,7 @@ class UserProfile {
       bio: bio ?? this.bio,
       interests: interests ?? this.interests,
       joinedEvents: joinedEvents ?? this.joinedEvents,
+      pastEvents: pastEvents ?? this.pastEvents,
       createdAt: createdAt,
       lastActive: lastActive ?? this.lastActive,
     );

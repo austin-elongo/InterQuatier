@@ -6,6 +6,11 @@ import 'package:interquatier/screens/common/coming_soon_screen.dart';
 import 'package:interquatier/screens/main_screen.dart';
 import 'package:interquatier/screens/events/create_event_screen.dart';
 import 'package:interquatier/screens/auth/register_screen.dart';
+import 'package:interquatier/screens/events/category_events_screen.dart';
+import 'package:interquatier/screens/rentals/rentals_menu_screen.dart';
+import 'package:interquatier/screens/rentals/rental_items_screen.dart';
+import 'package:interquatier/models/rental_item.dart';
+import 'package:interquatier/screens/rentals/rental_details_screen.dart';
 
 final router = GoRouter(
   initialLocation: '/',
@@ -16,7 +21,7 @@ final router = GoRouter(
       routes: [
         GoRoute(
           path: 'events',
-          builder: (context, state) => const EventsMenuScreen(),
+          builder: (context, state) => EventsMenuScreen(),
         ),
         GoRoute(
           path: 'chat',
@@ -40,9 +45,8 @@ final router = GoRouter(
     ),
     GoRoute(
       path: '/events/:category',
-      builder: (context, state) => ComingSoonScreen(
-        title: '${state.pathParameters['category']} Events',
-        message: '${state.pathParameters['category']} events coming soon!',
+      builder: (context, state) => CategoryEventsScreen(
+        category: state.pathParameters['category']!,
       ),
     ),
     GoRoute(
@@ -55,6 +59,27 @@ final router = GoRouter(
     GoRoute(
       path: '/register',
       builder: (context, state) => const RegisterScreen(),
+    ),
+    GoRoute(
+      path: '/rentals',
+      builder: (context, state) => const RentalsMenuScreen(),
+    ),
+    GoRoute(
+      path: '/rentals/:category',
+      builder: (context, state) {
+        final category = RentalCategory.values.firstWhere(
+          (c) => c.toString().split('.').last == state.pathParameters['category'],
+          orElse: () => RentalCategory.other,
+        );
+        return RentalItemsScreen(category: category);
+      },
+    ),
+    GoRoute(
+      path: '/rental/:id',
+      builder: (context, state) {
+        final item = state.extra as RentalItem;
+        return RentalDetailsScreen(item: item);
+      },
     ),
   ],
 ); 

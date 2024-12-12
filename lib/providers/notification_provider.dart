@@ -3,7 +3,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:interquatier/models/notification.dart';
 import 'package:interquatier/providers/auth_provider.dart';
 
-final notificationsProvider = StreamProvider<List<AppNotification>>((ref) {
+final unreadNotificationCountProvider = StreamProvider.autoDispose<int>((ref) {
+  final user = ref.watch(authProvider);
+  if (user == null) return Stream.value(0);
+
+  return FirebaseFirestore.instance
+      .collection('notifications')
+      .where('userId', isEqualTo: user.uid)
+      .where('isRead', isEqualTo: false)
+      .snapshots()
+      .map((snapshot) => snapshot.docs.length);
+});
+
+final notificationsProvider = StreamProvider.autoDispose<List<AppNotification>>((ref) {
   final user = ref.watch(authProvider);
   if (user == null) return Stream.value([]);
 
@@ -12,21 +24,20 @@ final notificationsProvider = StreamProvider<List<AppNotification>>((ref) {
       .where('userId', isEqualTo: user.uid)
       .orderBy('createdAt', descending: true)
       .snapshots()
-      .map((snapshot) {
-    return snapshot.docs
-        .map((doc) => AppNotification.fromFirestore(doc))
-        .toList();
-  });
+      .map((snapshot) => snapshot.docs
+          .map((doc) => AppNotification.fromFirestore(doc))
+          .toList());
 });
 
-final unreadNotificationsCountProvider = Provider<int>((ref) {
-  final notifications = ref.watch(notificationsProvider);
-  return notifications.when(
-    data: (notifications) =>
-        notifications.where((notification) => !notification.isRead).length,
-    loading: () => 0,
-    error: (_, __) => 0,
-  );
+final eventNotificationsProvider = StreamProvider.family<List<AppNotification>, String>((ref, eventId) {
+  return FirebaseFirestore.instance
+      .collection('notifications')
+      .where('eventId', isEqualTo: eventId)
+      .where('isRead', isEqualTo: false)
+      .snapshots()
+      .map((snapshot) => snapshot.docs
+          .map((doc) => AppNotification.fromFirestore(doc))
+          .toList());
 });
 
 class NotificationService {

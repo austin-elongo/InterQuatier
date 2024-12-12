@@ -9,6 +9,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:interquatier/services/image_service.dart';
 import 'package:interquatier/widgets/image_picker_dialog.dart';
 import 'package:interquatier/widgets/loading_indicator.dart';
+import 'package:intl/intl.dart';
+import 'package:interquatier/providers/premium_provider.dart';
 
 class CreateEventScreen extends ConsumerStatefulWidget {
   const CreateEventScreen({super.key});
@@ -27,11 +29,24 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
   String _selectedSport = 'Football';
   String _selectedSkillLevel = 'Beginner';
   int _participantLimit = 10;
-  DateTime _selectedDate = DateTime.now().add(const Duration(days: 1));
-  TimeOfDay _selectedTime = TimeOfDay.now();
+  DateTime _selectedStartDate = DateTime.now();
+  TimeOfDay _selectedStartTime = TimeOfDay.now();
+  DateTime _selectedEndDate = DateTime.now();
+  TimeOfDay _selectedEndTime = TimeOfDay.now();
   double _entryFee = 0;
   bool _isUploading = false;
   double _uploadProgress = 0;
+  EventVisibility _visibility = EventVisibility.public;
+
+  @override
+  void initState() {
+    super.initState();
+    // Set default end time to 2 hours after start time
+    _selectedEndTime = TimeOfDay(
+      hour: _selectedStartTime.hour + 2,
+      minute: _selectedStartTime.minute,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -111,26 +126,23 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                 const SizedBox(height: 16),
 
                 // Date & Time
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: _pickDate,
-                        icon: const Icon(Icons.calendar_today),
-                        label: Text(
-                          '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: _pickTime,
-                        icon: const Icon(Icons.access_time),
-                        label: Text(_selectedTime.format(context)),
-                      ),
-                    ),
-                  ],
+                ListTile(
+                  title: const Text('Start Time'),
+                  subtitle: Text(
+                    '${DateFormat('MMM d, y').format(_selectedStartDate)} at '
+                    '${_selectedStartTime.format(context)}',
+                  ),
+                  trailing: const Icon(Icons.calendar_today),
+                  onTap: _selectStartDateTime,
+                ),
+                ListTile(
+                  title: const Text('End Time'),
+                  subtitle: Text(
+                    '${DateFormat('MMM d, y').format(_selectedEndDate)} at '
+                    '${_selectedEndTime.format(context)}',
+                  ),
+                  trailing: const Icon(Icons.calendar_today),
+                  onTap: _selectEndDateTime,
                 ),
                 const SizedBox(height: 16),
 
@@ -215,6 +227,33 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
                 ),
                 const SizedBox(height: 24),
 
+                // Visibility
+                DropdownButtonFormField<EventVisibility>(
+                  value: _visibility,
+                  decoration: const InputDecoration(
+                    labelText: 'Visibility',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: EventVisibility.values.map((visibility) {
+                    return DropdownMenuItem(
+                      value: visibility,
+                      child: Text(
+                        visibility == EventVisibility.public
+                            ? 'Public'
+                            : 'Relationships Only (Premium)',
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() {
+                        _visibility = value;
+                      });
+                    }
+                  },
+                ),
+                const SizedBox(height: 16),
+
                 // Create Button
                 FilledButton(
                   onPressed: _handleCreateEvent,
@@ -267,30 +306,80 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
     );
   }
 
-  Future<void> _pickDate() async {
-    final picked = await showDatePicker(
+  Future<void> _selectStartDateTime() async {
+    final date = await showDatePicker(
       context: context,
-      initialDate: _selectedDate,
+      initialDate: _selectedStartDate,
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365)),
     );
-    if (picked != null) {
-      setState(() {
-        _selectedDate = picked;
-      });
-    }
+    if (date == null) return;
+
+    final time = await showTimePicker(
+      context: context,
+      initialTime: _selectedStartTime,
+    );
+    if (time == null) return;
+
+    setState(() {
+      _selectedStartDate = date;
+      _selectedStartTime = time;
+      
+      // Update end time to be at least 30 minutes after start time
+      final startDateTime = DateTime(
+        date.year, date.month, date.day,
+        time.hour, time.minute,
+      );
+      final defaultEndTime = startDateTime.add(const Duration(hours: 2));
+      
+      _selectedEndDate = defaultEndTime;
+      _selectedEndTime = TimeOfDay.fromDateTime(defaultEndTime);
+    });
   }
 
-  Future<void> _pickTime() async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: _selectedTime,
+  Future<void> _selectEndDateTime() async {
+    final startDateTime = DateTime(
+      _selectedStartDate.year,
+      _selectedStartDate.month,
+      _selectedStartDate.day,
+      _selectedStartTime.hour,
+      _selectedStartTime.minute,
     );
-    if (picked != null) {
-      setState(() {
-        _selectedTime = picked;
-      });
+
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _selectedEndDate,
+      firstDate: startDateTime,
+      lastDate: startDateTime.add(const Duration(days: 365)),
+    );
+    if (date == null) return;
+
+    final time = await showTimePicker(
+      context: context,
+      initialTime: _selectedEndTime,
+    );
+    if (time == null) return;
+
+    final endDateTime = DateTime(
+      date.year, date.month, date.day,
+      time.hour, time.minute,
+    );
+
+    if (endDateTime.isBefore(startDateTime.add(const Duration(minutes: 30)))) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Event must be at least 30 minutes long'),
+          ),
+        );
+      }
+      return;
     }
+
+    setState(() {
+      _selectedEndDate = date;
+      _selectedEndTime = time;
+    });
   }
 
   Future<void> _handleCreateEvent() async {
@@ -306,20 +395,48 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
       return;
     }
 
+    final isPremium = ref.read(premiumProvider).value ?? false;
+
+    if (isPremium && _visibility == EventVisibility.public) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Relationship-only events are a premium feature'),
+        ),
+      );
+      return;
+    }
+
+    final startDateTime = DateTime(
+      _selectedStartDate.year,
+      _selectedStartDate.month,
+      _selectedStartDate.day,
+      _selectedStartTime.hour,
+      _selectedStartTime.minute,
+    );
+
+    final endDateTime = DateTime(
+      _selectedEndDate.year,
+      _selectedEndDate.month,
+      _selectedEndDate.day,
+      _selectedEndTime.hour,
+      _selectedEndTime.minute,
+    );
+
+    if (endDateTime.isBefore(startDateTime.add(const Duration(minutes: 30)))) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Event must be at least 30 minutes long'),
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isUploading = true;
       _uploadProgress = 0;
     });
 
     try {
-      final dateTime = DateTime(
-        _selectedDate.year,
-        _selectedDate.month,
-        _selectedDate.day,
-        _selectedTime.hour,
-        _selectedTime.minute,
-      );
-
       // Create event with temporary image URL
       final event = Event(
         id: '',
@@ -328,11 +445,13 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
         bannerImageUrl: '',
         sport: _selectedSport,
         location: _locationController.text,
-        dateTime: dateTime,
+        startTime: startDateTime,
+        endTime: endDateTime,
         skillLevel: _selectedSkillLevel,
         participantLimit: _participantLimit,
         currentParticipants: [],
         description: _descriptionController.text,
+        status: 'active',
         createdAt: DateTime.now(),
         eventType: 'sports',
         entryFee: _entryFee,
@@ -344,6 +463,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
         specialRequirements: [],
         venueType: 'Outdoor',
         additionalNotes: '',
+        visibility: isPremium ? EventVisibility.relationships : EventVisibility.public,
       );
 
       // Create event in Firestore first to get ID

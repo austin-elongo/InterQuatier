@@ -7,6 +7,7 @@ enum NotificationType {
   eventReminder,
   eventUpdated,
   message,
+  relationshipRequest,
 }
 
 class AppNotification {
@@ -15,9 +16,10 @@ class AppNotification {
   final String title;
   final String message;
   final NotificationType type;
-  final String? eventId;
   final bool isRead;
   final DateTime createdAt;
+  final String? eventId;
+  final Map<String, dynamic>? data;
 
   AppNotification({
     required this.id,
@@ -25,25 +27,27 @@ class AppNotification {
     required this.title,
     required this.message,
     required this.type,
-    this.eventId,
-    this.isRead = false,
+    required this.isRead,
     required this.createdAt,
+    this.eventId,
+    this.data,
   });
 
   factory AppNotification.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     return AppNotification(
       id: doc.id,
-      userId: data['userId'] ?? '',
-      title: data['title'] ?? '',
-      message: data['message'] ?? '',
+      userId: data['userId'],
+      title: data['title'],
+      message: data['message'],
       type: NotificationType.values.firstWhere(
         (e) => e.toString() == data['type'],
         orElse: () => NotificationType.message,
       ),
-      eventId: data['eventId'],
       isRead: data['isRead'] ?? false,
       createdAt: (data['createdAt'] as Timestamp).toDate(),
+      eventId: data['eventId'],
+      data: data['data'],
     );
   }
 
@@ -53,9 +57,10 @@ class AppNotification {
       'title': title,
       'message': message,
       'type': type.toString(),
-      'eventId': eventId,
       'isRead': isRead,
       'createdAt': Timestamp.fromDate(createdAt),
+      if (eventId != null) 'eventId': eventId,
+      if (data != null) 'data': data,
     };
   }
 } 

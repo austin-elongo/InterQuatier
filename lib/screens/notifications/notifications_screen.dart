@@ -40,17 +40,15 @@ class NotificationsScreen extends ConsumerWidget {
   }
 }
 
-class _NotificationTile extends ConsumerWidget {
+class _NotificationTile extends StatelessWidget {
   final AppNotification notification;
 
-  const _NotificationTile({
-    required this.notification,
-  });
+  const _NotificationTile({required this.notification});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     return ListTile(
-      leading: _getNotificationIcon(),
+      leading: _getNotificationIcon(context),
       title: Text(notification.title),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -72,19 +70,16 @@ class _NotificationTile extends ConsumerWidget {
                 shape: BoxShape.circle,
               ),
             ),
-      onTap: () async {
+      onTap: () {
         if (!notification.isRead) {
-          await NotificationService().markAsRead(notification.id);
+          NotificationService().markAsRead(notification.id);
         }
-        if (notification.eventId != null && context.mounted) {
-          // Navigate to event details
-          // TODO: Implement navigation
-        }
+        _handleNotificationTap(context);
       },
     );
   }
 
-  Widget _getNotificationIcon() {
+  Widget _getNotificationIcon(BuildContext context) {
     IconData iconData;
     Color? color;
 
@@ -109,6 +104,10 @@ class _NotificationTile extends ConsumerWidget {
         iconData = Icons.update;
         color = Colors.purple;
         break;
+      case NotificationType.relationshipRequest:
+        iconData = Icons.people;
+        color = Colors.indigo;
+        break;
       case NotificationType.message:
         iconData = Icons.message;
         color = Colors.blue;
@@ -119,5 +118,15 @@ class _NotificationTile extends ConsumerWidget {
       backgroundColor: color?.withOpacity(0.2),
       child: Icon(iconData, color: color),
     );
+  }
+
+  void _handleNotificationTap(BuildContext context) {
+    if (notification.eventId != null) {
+      Navigator.pushNamed(
+        context,
+        '/events/details',
+        arguments: notification.eventId,
+      );
+    }
   }
 } 

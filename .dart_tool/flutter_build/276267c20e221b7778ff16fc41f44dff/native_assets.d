@@ -1,0 +1,1 @@
+ /Users/userair/AndroidStudioProjects/interquatier/.dart_tool/flutter_build/276267c20e221b7778ff16fc41f44dff/native_assets.yaml: 
